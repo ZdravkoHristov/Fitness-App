@@ -10,7 +10,8 @@ const DragObject = ({
 	children,
 	...rest
 }) => {
-	const dragInfo = useRef({ item: null, initCoords: null, dragging: false });
+	const initDragInfo = { item: null, initCoords: null, dragging: false };
+	const dragInfo = useRef({ ...initDragInfo });
 
 	const isColliding = item => {
 		return item2 => {
@@ -33,6 +34,15 @@ const DragObject = ({
 
 			return false;
 		};
+	};
+
+	const clearDragElement = () => {
+		if (!dragInfo.current.item) return;
+		dragInfo.current.item.classList.remove('current-drag');
+		dragInfo.current.item.style.transform = `translate(0, 0)`;
+		dragInfo.current.dragging = false;
+		document.removeEventListener('mousemove', moveDraggableObject);
+		document.body.removeEventListener('mouseleave', clearDragElement);
 	};
 
 	const startDragging = (e, data, isTouchEvent) => {
@@ -58,6 +68,8 @@ const DragObject = ({
 			initCoords: coords,
 			dragging: true,
 		};
+
+		document.body.addEventListener('mouseleave', clearDragElement);
 	};
 
 	const moveDraggableObject = (e, isTouchEvent) => {
@@ -69,7 +81,7 @@ const DragObject = ({
 		const yDiff = source.clientY - dragInfo.current.initCoords.y - height / 2;
 		dragInfo.current.item.style.transform = `translate(${xDiff}px, ${yDiff}px)`;
 
-		moveCb && moveCb(e, { isColliding });
+		moveCb && moveCb(e, { isColliding, dragInfo });
 	};
 
 	const stopDrag = e => {
@@ -81,16 +93,10 @@ const DragObject = ({
 			dropCb && dropCb(e, dragInfo);
 			break;
 		}
-		endCb && endCb();
-		e.target.classList.remove('current-drag');
-		dragInfo.current.item.style.transform = `translate(0, 0)`;
-		dragInfo.current.dragging = false;
-		document.removeEventListener('mousemove', moveDraggableObject);
+		endCb && endCb(e);
+		clearDragElement();
+		document.body.removeEventListener('mouseleave', clearDragElement);
 	};
-
-	useEffect(() => {
-		document.addEventListener('mouseleave', stopDrag);
-	}, []);
 
 	return (
 		<div
